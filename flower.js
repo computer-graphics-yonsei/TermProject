@@ -30,8 +30,8 @@ camera.position.set( 200, 200, 500 );
 scene.add(camera);
 
 // 햇빛
-const sunLight = new THREE.DirectionalLight(0xffffff, 2);
-sunLight.position.set(200, 300, 200);
+const sunLight = new THREE.DirectionalLight(0xffffff, 5);
+sunLight.position.set(-200, 200, 200);
 sunLight.castShadow = true;
 
 sunLight.shadow.mapSize.set(2048, 2048);
@@ -45,7 +45,7 @@ sunLight.shadow.camera.bottom = -200;
 scene.add(sunLight);
 
 // 주변광
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
 scene.add(ambientLight);
 
 const orbitControls = initOrbitControls(camera, renderer);
