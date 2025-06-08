@@ -170,7 +170,7 @@ function createPlayerZone(radius, segments, color, position){
 
 // 영역 움직임 (플레이어도 이렇게 움직이면 되려나)
 let playerZone; // 나중에 createPlayerZone 반환값 저장
-const moveSpeed = 0.5;
+const moveSpeed = 0.2; // 클릭 이동 속도(조절 가능)
 const keyState = {};
 const playerPosition = new THREE.Vector3(0, 0, 0);
 playerZone = createPlayerZone(10, 32, 0xffee88, playerPosition); // Player zone
@@ -416,15 +416,24 @@ animate();
 function animate() {
   requestAnimationFrame(animate);
 
-  const lerpSpeed = 0.1;
-
   if (targetPosition) {
-    playerZone.position.lerp(targetPosition, lerpSpeed);
-    const dist = playerZone.position.distanceTo(targetPosition);
-    if (dist < 0.05) {
+    const direction = new THREE.Vector3().subVectors(targetPosition, playerZone.position);
+    const distance = direction.length();
+    if (distance < moveSpeed) {
       playerZone.position.copy(targetPosition);
       targetPosition = null;
+      if (player) {
+        player.setMoving(false);
+        if (!player.isWatering) player.setAnimation('idle'); // 도착 시 idle (단, 물주기 중이 아니면)
+      }
+    } else {
+      direction.normalize();
+      playerZone.position.addScaledVector(direction, moveSpeed);
+      if (player) player.setLookDirection(direction);
+      if (player) player.setMoving(true); // 이동 중임만 알림
     }
+  } else {
+    if (player) player.setMoving(false);
   }
   updatePlayerZonePosition(); // (임시) wasd 이동 처리
 
@@ -455,6 +464,7 @@ window.addEventListener('resize', () => {
   renderer.setSize(width, height);
 }); 
 
+// 꽃 클릭 시 water 애니메이션 1회 재생 (player 메서드로 변경)
 // 유저 클릭 처리
 window.addEventListener('click', (event) => {
   const mouse = new THREE.Vector2(
@@ -493,6 +503,10 @@ window.addEventListener('click', (event) => {
           inst.isActivated = true;
           inst.startTime = performance.now();
         });
+        // 이동 중이라면 즉시 멈추고 현재 위치에 고정
+        targetPosition = null;
+        // playerZone.position은 이미 현재 위치이므로 별도 이동 불필요
+        if (player) player.playWaterOnceThenIdle(); // 꽃 클릭 시 물주기 애니메이션
       } else {
         movePlayer(clickPosition);
       }
