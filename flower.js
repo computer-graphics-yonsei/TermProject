@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { initCamera, initRenderer, initOrbitControls } from './util/util.js';
+import { Player } from './player.js';
 
 const scene = new THREE.Scene();
 const renderer = initRenderer();
@@ -27,7 +28,10 @@ const urls = [
 ];
 
 var cubeLoader = new THREE.CubeTextureLoader();
-scene.background = cubeLoader.load(urls);
+const backgroundCube = cubeLoader.load(urls);
+scene.background = backgroundCube;
+const environmentCube = cubeLoader.load(urls);
+scene.environment = environmentCube;
 
 // 햇빛
 const sunLight = new THREE.DirectionalLight(0xffffff, 5);
@@ -172,6 +176,11 @@ const playerPosition = new THREE.Vector3(0, 0, 0);
 playerZone = createPlayerZone(10, 32, 0xffee88, playerPosition); // Player zone
 
 let targetPosition = null; // 전역에서 관리
+let player = null;
+
+// playerZone 생성 이후에 Player 인스턴스 생성
+player = new Player(scene, raycaster, groundMeshes, playerZone.position.clone(), downDirection);
+player.bindAnimationHotkeys();
 
 // 영역 (및 플레이어) 이동 함수
 function movePlayer(position) {
@@ -418,7 +427,10 @@ function animate() {
     }
   }
   updatePlayerZonePosition(); // (임시) wasd 이동 처리
-  
+
+  // 플레이어 위치 동기화
+  if (player) player.update(playerZone.position);
+
   const allInstances = [...daffodilInstances, ...sunflowerInstances, 
                           ...hyacinthInstances, ...cactusBloomInstances, 
                           ...cosmosInstances, ...daisyInstances,
