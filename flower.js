@@ -396,11 +396,13 @@ function animateFlowers(inst) {
   const { group, materials, isActivated, startTime } = inst;
   if (!isActivated) return;
   
-  const t = Math.min((now - startTime) / 5000, 1); // 최대 5초
+  // 0.5초 선딜레이 후 성장 시작
+  const delay = 500; // ms
+  let t = (now - startTime - delay) / 15000;
+  t = Math.max(0, Math.min(t, 1));
   group.scale.lerp(activeScale, t);
   group.position.lerp(inst.activePosition, t);
   materials.forEach(mat => {
-    // mat.color.lerp(mat.userData.activeColor, t);
     if (mat && mat.color && mat.userData?.activeColor) {
       mat.color.lerp(mat.userData.activeColor, t);
     }
@@ -499,6 +501,12 @@ window.addEventListener('click', (event) => {
       });
 
       if (flowersInZone.length > 0) {
+        // 가장 가까운 꽃 방향을 바라보게
+        if (player) {
+          const flowerPos = flowersInZone[0].group.position;
+          const lookDir = new THREE.Vector3().subVectors(flowerPos, playerZone.position);
+          player.setLookDirection(lookDir);
+        }
         flowersInZone.forEach(inst => {
           inst.isActivated = true;
           inst.startTime = performance.now();
