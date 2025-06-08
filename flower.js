@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { initCamera, initRenderer, initOrbitControls } from './util/util.js';
+import { Player } from './player.js';
 
 const scene = new THREE.Scene();
 const renderer = initRenderer();
@@ -27,7 +28,10 @@ const urls = [
 ];
 
 var cubeLoader = new THREE.CubeTextureLoader();
-scene.background = cubeLoader.load(urls);
+const backgroundCube = cubeLoader.load(urls);
+scene.background = backgroundCube;
+const environmentCube = cubeLoader.load(urls);
+scene.environment = environmentCube;
 
 // 햇빛
 const sunLight = new THREE.DirectionalLight(0xffffff, 5);
@@ -166,12 +170,17 @@ function createPlayerZone(radius, segments, color, position){
 
 // 영역 움직임 (플레이어도 이렇게 움직이면 되려나)
 let playerZone; // 나중에 createPlayerZone 반환값 저장
-const moveSpeed = 0.5;
+const moveSpeed = 0.2; // 클릭 이동 속도(조절 가능)
 const keyState = {};
 const playerPosition = new THREE.Vector3(0, 0, 0);
 playerZone = createPlayerZone(10, 32, 0xffee88, playerPosition); // Player zone
 
 let targetPosition = null; // 전역에서 관리
+let player = null;
+
+// playerZone 생성 이후에 Player 인스턴스 생성
+player = new Player(scene, raycaster, groundMeshes, playerZone.position.clone(), downDirection);
+player.bindAnimationHotkeys();
 
 // 영역 (및 플레이어) 이동 함수
 function movePlayer(position) {
@@ -387,11 +396,13 @@ function animateFlowers(inst) {
   const { group, materials, isActivated, startTime } = inst;
   if (!isActivated) return;
   
-  const t = Math.min((now - startTime) / 5000, 1); // 최대 5초
+  // 0.5초 선딜레이 후 성장 시작
+  const delay = 500; // ms
+  let t = (now - startTime - delay) / 15000;
+  t = Math.max(0, Math.min(t, 1));
   group.scale.lerp(activeScale, t);
   group.position.lerp(inst.activePosition, t);
   materials.forEach(mat => {
-    // mat.color.lerp(mat.userData.activeColor, t);
     if (mat && mat.color && mat.userData?.activeColor) {
       mat.color.lerp(mat.userData.activeColor, t);
     }
@@ -407,18 +418,30 @@ animate();
 function animate() {
   requestAnimationFrame(animate);
 
-  const lerpSpeed = 0.1;
-
   if (targetPosition) {
-    playerZone.position.lerp(targetPosition, lerpSpeed);
-    const dist = playerZone.position.distanceTo(targetPosition);
-    if (dist < 0.05) {
+    const direction = new THREE.Vector3().subVectors(targetPosition, playerZone.position);
+    const distance = direction.length();
+    if (distance < moveSpeed) {
       playerZone.position.copy(targetPosition);
       targetPosition = null;
+      if (player) {
+        player.setMoving(false);
+        if (!player.isWatering) player.setAnimation('idle'); // 도착 시 idle (단, 물주기 중이 아니면)
+      }
+    } else {
+      direction.normalize();
+      playerZone.position.addScaledVector(direction, moveSpeed);
+      if (player) player.setLookDirection(direction);
+      if (player) player.setMoving(true); // 이동 중임만 알림
     }
+  } else {
+    if (player) player.setMoving(false);
   }
   updatePlayerZonePosition(); // (임시) wasd 이동 처리
-  
+
+  // 플레이어 위치 동기화
+  if (player) player.update(playerZone.position);
+
   const allInstances = [...daffodilInstances, ...sunflowerInstances, 
                           ...hyacinthInstances, ...cactusBloomInstances, 
                           ...cosmosInstances, ...daisyInstances,
@@ -443,6 +466,7 @@ window.addEventListener('resize', () => {
   renderer.setSize(width, height);
 }); 
 
+// 꽃 클릭 시 water 애니메이션 1회 재생 (player 메서드로 변경)
 // 유저 클릭 처리
 window.addEventListener('click', (event) => {
   const mouse = new THREE.Vector2(
@@ -477,10 +501,20 @@ window.addEventListener('click', (event) => {
       });
 
       if (flowersInZone.length > 0) {
+        // 가장 가까운 꽃 방향을 바라보게
+        if (player) {
+          const flowerPos = flowersInZone[0].group.position;
+          const lookDir = new THREE.Vector3().subVectors(flowerPos, playerZone.position);
+          player.setLookDirection(lookDir);
+        }
         flowersInZone.forEach(inst => {
           inst.isActivated = true;
           inst.startTime = performance.now();
         });
+        // 이동 중이라면 즉시 멈추고 현재 위치에 고정
+        targetPosition = null;
+        // playerZone.position은 이미 현재 위치이므로 별도 이동 불필요
+        if (player) player.playWaterOnceThenIdle(); // 꽃 클릭 시 물주기 애니메이션
       } else {
         movePlayer(clickPosition);
       }
