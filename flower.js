@@ -404,7 +404,8 @@ function animateFlowers(inst) {
   
   // 0.5초 선딜레이 후 성장 시작
   const delay = 500; // ms
-  let t = (now - startTime - delay) / 15000;
+  let growthTime = 3000; // 3초
+  let t = (now - startTime - delay) / growthTime;
   t = Math.max(0, Math.min(t, 1));
   group.scale.lerp(activeScale, t);
   group.position.lerp(inst.activePosition, t);
