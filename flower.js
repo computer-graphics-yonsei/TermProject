@@ -3,6 +3,9 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { initCamera, initRenderer, initOrbitControls } from './util/util.js';
 import { Player } from './player.js';
 
+window.isFirstPerson = false;
+window.firstPersonStartTime = 0;
+
 let wateredCount = 0;
 const scoreElement = document.getElementById('score');
 
@@ -458,6 +461,36 @@ function animate() {
     if (inst.isActivated) animateFlowers(inst);
   });
 
+  if (window.isFirstPerson) {
+    if (player && player.model) {
+      const eyeOffset = new THREE.Vector3(0, 10, 0); // 캐릭터 눈 위치
+      const forwardOffset = new THREE.Vector3(0, 0, -1); // 정면 방향
+
+      // 눈 위치 계산
+      const eyePosition = new THREE.Vector3();
+      player.model.getWorldPosition(eyePosition);
+      eyePosition.add(eyeOffset);
+
+      // 시선 방향: 현재 캐릭터가 보는 방향 기준으로
+      const forward = new THREE.Vector3(0, 0, -1);
+      forward.applyQuaternion(player.model.quaternion); // 캐릭터의 회전 적용
+      const lookTarget = eyePosition.clone().add(forwardOffset.copy(forward).multiplyScalar(10)); // 앞쪽으로 10만큼
+
+      // 카메라 설정
+      camera.position.lerp(eyePosition, 0.3);
+      camera.lookAt(lookTarget);
+
+      orbitControls.enabled = false;
+    }
+
+    // 3초 후 자동 복귀
+    if (performance.now() - firstPersonStartTime > 3000) {
+      isFirstPerson = false;
+      autoFollowPlayer = true;
+      orbitControls.enabled = true;
+    }
+  }
+
   if (autoFollowPlayer && playerZone) {
     const cameraOffset = new THREE.Vector3(0, 50, -50);
     const targetCamPos = playerZone.position.clone().add(cameraOffset);
@@ -528,7 +561,11 @@ window.addEventListener('click', (event) => {
           player.setLookDirection(lookDir);
         }
 
-        if (player) player.playWaterOnceThenIdle();
+        if (player) {
+          isFirstPerson = true;
+          firstPersonStartTime = performance.now();
+          player.playWaterOnceThenIdle();
+        }
         wateredCount += flowersInZone.length;
         scoreElement.innerText = `Watered: ${wateredCount}`;
 

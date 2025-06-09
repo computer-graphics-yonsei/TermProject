@@ -120,7 +120,14 @@ export class Player {
     window.addEventListener('keydown', (e) => {
       if (e.key === '1') this.setAnimation('idle');
       if (e.key === '2') this.setAnimation('walk');
-      if (e.key === '3') this.setAnimation('water');
+      if (e.key === '3') {
+        this.setAnimation('water');
+        if (typeof window !== 'undefined') {
+          window.isFirstPerson = true;
+          console.log("카메라 1인칭 전환");
+          window.firstPersonStartTime = performance.now();
+        }
+      }
     });
   }
 
