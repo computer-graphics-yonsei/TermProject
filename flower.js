@@ -461,32 +461,31 @@ function animate() {
     if (inst.isActivated) animateFlowers(inst);
   });
 
-  if (window.isFirstPerson) {
-    if (player && player.model) {
-      const eyeOffset = new THREE.Vector3(0, 10, 0); // 캐릭터 눈 위치
-      const forwardOffset = new THREE.Vector3(0, 0, -1); // 정면 방향
+  if (window.isFirstPerson && player && player.model) {
+    const headOffset = new THREE.Vector3(0, 20, 0); // 머리 높이
+    const forward = new THREE.Vector3(0, 0, -1);     // 정면 방향
 
-      // 눈 위치 계산
-      const eyePosition = new THREE.Vector3();
-      player.model.getWorldPosition(eyePosition);
-      eyePosition.add(eyeOffset);
+    // 캐릭터의 머리 위치 계산
+    const headPos = new THREE.Vector3();
+    player.model.getWorldPosition(headPos);
+    headPos.add(headOffset);
 
-      // 시선 방향: 현재 캐릭터가 보는 방향 기준으로
-      const forward = new THREE.Vector3(0, 0, -1);
-      forward.applyQuaternion(player.model.quaternion); // 캐릭터의 회전 적용
-      const lookTarget = eyePosition.clone().add(forwardOffset.copy(forward).multiplyScalar(10)); // 앞쪽으로 10만큼
+    // 회전 적용: 캐릭터가 바라보는 방향
+    forward.applyQuaternion(player.model.quaternion).normalize();
 
-      // 카메라 설정
-      camera.position.lerp(eyePosition, 0.3);
-      camera.lookAt(lookTarget);
+    // 카메라를 머리 바로 앞에 놓는다 (몸보다 살짝 앞)
+    const cameraPos = headPos.clone().add(forward.clone().multiplyScalar(-100));
+    camera.position.copy(cameraPos);
 
-      orbitControls.enabled = false;
-    }
+    // 바라보는 곳: 캐릭터가 바라보는 방향 10유닛 앞
+    const lookTarget = cameraPos.clone().add(forward.clone().multiplyScalar(0));
+    camera.lookAt(lookTarget);
 
-    // 3초 후 자동 복귀
-    if (performance.now() - firstPersonStartTime > 3000) {
-      isFirstPerson = false;
-      autoFollowPlayer = true;
+    orbitControls.enabled = false;
+
+    if (performance.now() - window.firstPersonStartTime > 3000) {
+      window.isFirstPerson = false;
+      window.autoFollowPlayer = true;
       orbitControls.enabled = true;
     }
   }
