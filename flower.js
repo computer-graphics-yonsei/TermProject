@@ -3,6 +3,9 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { initCamera, initRenderer, initOrbitControls } from './util/util.js';
 import { Player } from './player.js';
 
+let wateredCount = 0;
+const scoreElement = document.getElementById('score');
+
 const scene = new THREE.Scene();
 const renderer = initRenderer();
 
@@ -523,6 +526,16 @@ window.addEventListener('click', (event) => {
           const lookDir = new THREE.Vector3().subVectors(flowerPos, playerZone.position);
           player.setLookDirection(lookDir);
         }
+
+        if (player) player.playWaterOnceThenIdle();
+        wateredCount += flowersInZone.length;
+        scoreElement.innerText = `Watered: ${wateredCount}`;
+
+        flowersInZone.forEach(inst => {
+          inst.isActivated = true;
+          inst.startTime = performance.now();
+        });
+      
         flowersInZone.forEach(inst => {
           inst.isActivated = true;
           inst.startTime = performance.now();
