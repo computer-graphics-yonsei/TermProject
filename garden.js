@@ -70,6 +70,9 @@ const flowerSpawnConfigs = [
 ];
 
 loadGround(scene, groundMeshes, () => {
+  const totalCount = flowerSpawnConfigs.reduce((sum, config) => sum + config.count, 0);
+  scoreElement.innerText = `Watered: 0 / ${totalCount}`;
+
   flowerSpawnConfigs.forEach(({ url, count, xRange, zRange, randomYRot }) => {
     for (let i = 0; i < count; i++) {
       const x = THREE.MathUtils.randFloat(xRange[0], xRange[1]);
@@ -246,8 +249,10 @@ window.addEventListener('click', (event) => {
           triggerZoomIn();
           player.playWaterOnceThenIdle();
         }
+        const allInstances = getAllFlowerInstances();
+        const totalCount = allInstances.length;
         wateredCount += flowersInZone.length;
-        scoreElement.innerText = `Watered: ${wateredCount}`;
+        scoreElement.innerText = `Watered: ${wateredCount} / ${totalCount}`;
 
         flowersInZone.forEach(inst => {
           inst.isActivated = true;
