@@ -62,7 +62,7 @@ export function loadGround(scene, groundMeshes, callback) {
 }
 
 // 꽃 생성 함수
-export function spawnFlower(flowerUrl, positionXZ, yRot, groundMeshes, scene) {
+export function spawnFlower(flowerUrl, positionXZ, yRot, groundMeshes, scene, type) {
   const raycaster = new THREE.Raycaster();
   const down = new THREE.Vector3(0, -1, 0);
   raycaster.set(new THREE.Vector3(positionXZ.x, 0, positionXZ.z), down);
@@ -111,6 +111,7 @@ export function spawnFlower(flowerUrl, positionXZ, yRot, groundMeshes, scene) {
         finalY: finalY,
         activePosition: new THREE.Vector3(positionXZ.x, finalY + 1, positionXZ.z),
         activeRot: yRot * 30,
+        type: kind
       });
     }
   });

@@ -17,6 +17,18 @@ const renderer = initRenderer();
 const { camera, orbitControls } = setupCamera(renderer); // util 기반으로 생성
 scene.add(camera);
 
+// 방향키 처리
+const keyState = {
+  w: false,
+  a: false,
+  s: false,
+  d: false,
+  ArrowUp: false,
+  ArrowLeft: false,
+  ArrowDown: false,
+  ArrowRight: false
+};
+
 // ======================Background======================
 // Cube Map 하늘 배경
 const urls = [
@@ -56,29 +68,42 @@ const downDirection = new THREE.Vector3(0, -1, 0);
 let groundMeshes = [];
 
 // ======================Flower======================
+// 꽃말
+const flowerInfo = {
+  daffodil: { name: '수선화', meaning: '자기애' },
+  sunflower: { name: '해바라기', meaning: '숭배, 동경' },
+  hyacinth: { name: '히아신스', meaning: '슬픔, 기쁨' },
+  cactus: { name: '선인장', meaning: '불타는 사랑' },
+  cosmos: { name: '코스모스', meaning: '순정' },
+  daisy: { name: '데이지', meaning: '희망' },
+  marigold: { name: '금잔화', meaning: '항상 생각함' },
+  morningGlory: { name: '나팔꽃', meaning: '덧없는 사랑' },
+  tulip: { name: '튤립', meaning: '사랑의 고백' },
+};
+
 // 땅 로드 후 꽃 생성 콜백으로 처리
 const flowerSpawnConfigs = [
-  { url: flowerModels.daffodil, count: 30, xRange: [-70, -40], zRange: [-30, -10], randomYRot: true },
-  { url: flowerModels.sunflower, count: 20, xRange: [-40, 10],  zRange: [-60, -40] },
-  { url: flowerModels.hyacinth, count: 35, xRange: [0, 40],    zRange: [-35, -20], randomYRot: true },
-  { url: flowerModels.cactus, count: 10, xRange: [-42, -35], zRange: [0, 20] },
-  { url: flowerModels.cosmos, count: 50, xRange: [-30, -15], zRange: [30, 50], randomYRot: true },
-  { url: flowerModels.daisy, count: 100, xRange: [10, 40],   zRange: [-5, 20], randomYRot: true },
-  { url: flowerModels.marigold, count: 30, xRange: [50, 65],   zRange: [-25, 10], randomYRot: true },
-  { url: flowerModels.morningGlory, count: 20, xRange: [-5, 5],   zRange: [25, 50], randomYRot: true },
-  { url: flowerModels.tulip,count: 30, xRange: [-25, -5], zRange: [-20, 15], randomYRot: true },
+  { type: 'daffodil', url: flowerModels.daffodil, count: 30, xRange: [-70, -40], zRange: [-30, -10], randomYRot: true },
+  { type: 'sunflower', url: flowerModels.sunflower, count: 20, xRange: [-40, 10],  zRange: [-60, -40] },
+  { type: 'hyacinth', url: flowerModels.hyacinth, count: 35, xRange: [0, 40],    zRange: [-35, -20], randomYRot: true },
+  { type: 'cactus', url: flowerModels.cactus, count: 10, xRange: [-42, -35], zRange: [0, 20] },
+  { type: 'cosmos', url: flowerModels.cosmos, count: 50, xRange: [-30, -15], zRange: [30, 50], randomYRot: true },
+  { type: 'daisy', url: flowerModels.daisy, count: 100, xRange: [10, 40],   zRange: [-5, 20], randomYRot: true },
+  { type: 'marigold', url: flowerModels.marigold, count: 30, xRange: [50, 65],   zRange: [-25, 10], randomYRot: true },
+  { type: 'morningGlory', url: flowerModels.morningGlory, count: 20, xRange: [-5, 5],   zRange: [25, 50], randomYRot: true },
+  { type: 'tulip', url: flowerModels.tulip, count: 30, xRange: [-25, -5], zRange: [-20, 15], randomYRot: true },
 ];
 
 loadGround(scene, groundMeshes, () => {
   const totalCount = flowerSpawnConfigs.reduce((sum, config) => sum + config.count, 0);
   scoreElement.innerText = `Watered: 0 / ${totalCount}`;
 
-  flowerSpawnConfigs.forEach(({ url, count, xRange, zRange, randomYRot }) => {
+  flowerSpawnConfigs.forEach(({ type, url, count, xRange, zRange, randomYRot }) => {
     for (let i = 0; i < count; i++) {
       const x = THREE.MathUtils.randFloat(xRange[0], xRange[1]);
       const z = THREE.MathUtils.randFloat(zRange[0], zRange[1]);
       const yRot = randomYRot ? THREE.MathUtils.degToRad(THREE.MathUtils.randFloat(0, 20)) : 0;
-      spawnFlower(url, new THREE.Vector3(x, 0, z), yRot, groundMeshes, scene);
+      spawnFlower(url, new THREE.Vector3(x, 0, z), yRot, groundMeshes, scene, type);
     }
   });
 });
@@ -107,6 +132,88 @@ function animateFlowers(inst) {
   
   if (Math.abs(group.scale.y - activeScale.y) < 0.01) {
     inst.isActivated = false;
+    inst.growthFinished = true;
+  }
+}
+
+// 꽃말 띄우기
+const labeledTypes = new Set();
+
+function showFlowerLabel(type, position) {
+  const info = flowerInfo[type];
+  if (!info) return;
+
+  const message = `${info.name}: ${info.meaning}`;
+  const sprite = createTextSprite(message);
+  let textY = 5;
+  if (type === 'sunflower') textY += 10;
+  sprite.position.copy(position.clone().add(new THREE.Vector3(0, textY, 0)));
+  scene.add(sprite);
+}
+
+function createTextSprite(message) {
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  canvas.width = 512;
+  canvas.height = 128;
+  ctx.font = 'bold 40px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = 'white';
+  ctx.strokeStyle = 'black';
+  ctx.lineWidth = 6;
+  ctx.strokeText(message, 256, 64);
+  ctx.fillText(message, 256, 64);
+  const texture = new THREE.CanvasTexture(canvas);
+  const material = new THREE.SpriteMaterial({ map: texture, transparent: true });
+  const sprite = new THREE.Sprite(material);
+  sprite.scale.set(30, 8, 1); // 적절한 크기로 조절
+  return sprite;
+}
+
+function checkFlowerCompletionAndLabel() {
+  const allInstances = getAllFlowerInstances();
+  const types = Object.keys(flowerInfo);
+
+  types.forEach(type => {
+    const group = allInstances.filter(inst => inst.type === type);
+    if (group.length === 0 || labeledTypes.has(type)) return;
+    const allWatered = group.every(inst => inst.growthFinished); // 또는 isActivated이 false로 전환된 상태 확인
+
+    if (allWatered) {
+      // 평균 위치 계산
+      const center = group.reduce((sum, inst) => sum.add(inst.group.position), new THREE.Vector3())
+                        .divideScalar(group.length);
+      showFlowerLabel(type, center);
+      labeledTypes.add(type);
+    }
+  });
+}
+
+// ======================GameClear======================
+let finishShown = false;
+
+function checkGlobalCompletion() {
+  if (finishShown) return;
+
+  const allTypes = Object.keys(flowerInfo);
+  if (labeledTypes.size === allTypes.length) {
+    finishShown = true;
+    setTimeout(() => {
+      const div = document.createElement('div');
+      div.innerText = '완료!';
+      div.style.position = 'fixed';
+      div.style.top = '50%';
+      div.style.left = '50%';
+      div.style.transform = 'translate(-50%, -50%)';
+      div.style.fontSize = '64px';
+      div.style.color = 'white';
+      div.style.textShadow = '2px 2px 4px black';
+      document.body.appendChild(div);
+
+      // 모든 인풋 차단
+      // TODO
+    }, 2000);
   }
 }
 
@@ -176,7 +283,25 @@ function animate() {
       if (player) player.setMoving(true); // 이동 중임만 알림
     }
   } else {
-    if (player) player.setMoving(false);
+    // if (player) player.setMoving(false);
+    
+    // 방향키 이동
+    const moveVec = new THREE.Vector3();
+    if (keyState.w || keyState.ArrowUp) moveVec.z -= 1;
+    if (keyState.s || keyState.ArrowDown) moveVec.z += 1;
+    if (keyState.a || keyState.ArrowLeft) moveVec.x -= 1;
+    if (keyState.d || keyState.ArrowRight) moveVec.x += 1;
+
+    if (moveVec.lengthSq() > 0) {
+      moveVec.normalize().multiplyScalar(moveSpeed);
+      playerZone.position.add(moveVec);
+      if (player) {
+        player.setMoving(true);
+        player.setLookDirection(moveVec);
+      }
+    } else {
+      if (player) player.setMoving(false);
+    }
   }
 
   // 플레이어 위치 동기화
@@ -189,6 +314,12 @@ function animate() {
 
   // updateCameraFollow(playerZone, player, window.isFirstPerson, window.firstPersonStartTime, autoFollowPlayer);
   updateCameraFollow(playerZone, player, window.isFirstPerson, window.firstPersonStartTime, autoFollowPlayer);
+
+  // 모두 성장한 꽃은 꽃말 띄우기
+  checkFlowerCompletionAndLabel();
+
+  // 게임 종료 인풋 막기
+  checkGlobalCompletion();
 
   renderer.render(scene, camera);
 }
@@ -205,6 +336,21 @@ orbitControls.addEventListener('start', () => {
   autoFollowPlayer = false;  // 사용자가 마우스로 조작 시작
 });
 
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'w') keyState.w = true;
+  if (e.key === 'a') keyState.a = true;
+  if (e.key === 's') keyState.s = true;
+  if (e.key === 'd') keyState.d = true;
+  if (e.key in keyState) keyState[e.key] = true;
+});
+
+window.addEventListener('keyup', (e) => {
+  if (e.key === 'w') keyState.w = false;
+  if (e.key === 'a') keyState.a = false;
+  if (e.key === 's') keyState.s = false;
+  if (e.key === 'd') keyState.d = false;
+  if (e.key in keyState) keyState[e.key] = false;
+});
 // 유저 클릭 처리
 // 꽃 클릭 시 water 애니메이션 1회 재생 (player 메서드로 변경)
 window.addEventListener('click', (event) => {
