@@ -292,17 +292,30 @@ function animate() {
     if (keyState.a || keyState.ArrowLeft) moveVec.x -= 1;
     if (keyState.d || keyState.ArrowRight) moveVec.x += 1;
 
-    if (moveVec.lengthSq() > 0) {
-      moveVec.normalize().multiplyScalar(moveSpeed);
-      playerZone.position.add(moveVec);
-      if (player) {
-        player.setMoving(true);
-        player.setLookDirection(moveVec);
-      }
-    } else {
-      if (player) player.setMoving(false);
+  //   if (moveVec.lengthSq() > 0) {
+  //     moveVec.normalize().multiplyScalar(moveSpeed);
+  //     playerZone.position.add(moveVec);
+  //     if (player) {
+  //       player.setMoving(true);
+  //       player.setLookDirection(moveVec);
+  //     }
+  //   } else {
+  //     if (player) player.setMoving(false);
+  //   }
+  // }
+  const isKeyDown = Object.values(keyState).some(v => v);
+  if (isKeyDown && moveVec.lengthSq() > 0) {
+    moveVec.normalize().multiplyScalar(moveSpeed);
+    playerZone.position.add(moveVec);
+    if (player) {
+      player.setMoving(true);
+      player.setLookDirection(moveVec);
     }
+  } else {
+    if (player) player.setMoving(false);
+    if (!player.isWatering) player.setAnimation('idle');  
   }
+}
 
   // 플레이어 위치 동기화
   if (player) player.update(playerZone.position);
