@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { initRenderer } from './util/util.js';
-import { loadGround, spawnFlower, flowerModels, getAllFlowerInstances } from './flowerLoader.js';
+import { backgroundCube, lighting, loadGround, spawnFlower, flowerModels, getAllFlowerInstances } from './loader.js';
 import { setupCamera, updateCameraFollow, getCamera, triggerZoomIn } from './camera.js';
 import { Player } from './player.js';
 
@@ -29,43 +29,17 @@ const keyState = {
   ArrowRight: false
 };
 
-// ======================Background======================
-// Cube Map 하늘 배경
-const urls = [
-    './assets/Textures/Background/px.png',
-    './assets/Textures/Background/nx.png',
-    './assets/Textures/Background/py.png',
-    './assets/Textures/Background/ny.png',
-    './assets/Textures/Background/pz.png',
-    './assets/Textures/Background/nz.png'
-];
-
-var cubeLoader = new THREE.CubeTextureLoader();
-const backgroundCube = cubeLoader.load(urls);
-scene.background = backgroundCube;
-const environmentCube = cubeLoader.load(urls);
-scene.environment = environmentCube;
-
-// 햇빛
-const sunLight = new THREE.DirectionalLight(0xffffff, 5);
-sunLight.position.set(-200, 200, 200);
-sunLight.castShadow = true;
-sunLight.shadow.mapSize.set(2048, 2048);
-sunLight.shadow.camera.near = 1;
-sunLight.shadow.camera.far = 1000;
-sunLight.shadow.camera.left = -200;
-sunLight.shadow.camera.right = 200;
-sunLight.shadow.camera.top = 200;
-sunLight.shadow.camera.bottom = -200;
-scene.add(sunLight);
-
-// 주변광
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-scene.add(ambientLight);
-
+// raycaster 
 const raycaster = new THREE.Raycaster();
 const downDirection = new THREE.Vector3(0, -1, 0);
 let groundMeshes = [];
+
+// ======================Background======================
+// Cube Map 하늘 배경
+backgroundCube(scene);
+
+// Lighting
+lighting(scene);
 
 // ======================Flower======================
 // 꽃말
@@ -136,6 +110,7 @@ function animateFlowers(inst) {
   }
 }
 
+// ======================text======================
 // 꽃말 띄우기
 const labeledTypes = new Set();
 
@@ -190,6 +165,15 @@ function checkFlowerCompletionAndLabel() {
   });
 }
 
+// ======================wind======================
+const wind = { strength: 0.12, speed: 1.8 };
+function swayFlowers(timeSec) {
+  getAllFlowerInstances().forEach(inst => {
+    const sway = Math.sin(timeSec * wind.speed + inst.phase) * wind.strength;
+    inst.group.rotation.z = sway;
+  });
+}
+
 // ======================GameClear======================
 let finishShown = false;
 
@@ -225,7 +209,7 @@ function createPlayerZone(radius, segments, color, position){
     color: color,
     side: THREE.DoubleSide,
     transparent: true,
-    opacity: 0.4,  // 투명
+    opacity: 0.2,  // 투명
   });
   const circle = new THREE.Mesh(geometry, material);
   circle.rotation.x = -Math.PI / 2;  // 바닥에 평행하게
@@ -235,11 +219,11 @@ function createPlayerZone(radius, segments, color, position){
   return circle;
 }
 
-// 영역 움직임 (플레이어도 이렇게 움직이면 되려나)
-let playerZone; // 나중에 createPlayerZone 반환값 저장
+// 영역 움직임
+let playerZone;
 const moveSpeed = 0.2; // 클릭 이동 속도(조절 가능)
 const playerPosition = new THREE.Vector3(0, 0, 0);
-playerZone = createPlayerZone(10, 32, 0xffee88, playerPosition); // Player zone
+playerZone = createPlayerZone(10, 32, 0x1111111, playerPosition); // Player zone
 
 let targetPosition = null; // 전역에서 관리
 let player = null;
@@ -264,8 +248,12 @@ function movePlayer(position) {
 
 animate();
 function animate() {
-  requestAnimationFrame(animate);
+  // 바람 효과
+  const now  = performance.now();
+  const tSec = now * 0.001;
+  swayFlowers(tSec);
 
+  // 플레이어 애니메이션
   if (targetPosition) {
     const direction = new THREE.Vector3().subVectors(targetPosition, playerZone.position);
     const distance = direction.length();
@@ -333,7 +321,8 @@ function animate() {
 
   // 게임 종료 인풋 막기
   checkGlobalCompletion();
-
+  
+  requestAnimationFrame(animate);
   renderer.render(scene, camera);
 }
 
@@ -390,8 +379,14 @@ window.addEventListener('click', (event) => {
       // 영역 내부 클릭
       const flowersInZone = allInstances.filter(inst => {
         const pos = inst.group.position;
-        const d = playerZone.position.distanceTo(new THREE.Vector3(pos.x, playerZone.position.y, pos.z));
-        return d <= playerZoneRadius && !inst.isActivated;
+        const d = playerZone.position.distanceTo(
+          new THREE.Vector3(pos.x, playerZone.position.y, pos.z)
+        );
+        return (
+          d <= playerZoneRadius &&
+          !inst.isActivated &&          // 지금 성장 애니메이션 중이 아님
+          !inst.growthFinished          // 과거에 이미 물을 준 적도 없음
+        );
       });
 
       if (flowersInZone.length > 0) {
@@ -416,6 +411,7 @@ window.addEventListener('click', (event) => {
         flowersInZone.forEach(inst => {
           inst.isActivated = true;
           inst.startTime = performance.now();
+          inst.growthFinished = true;  
         });
       
         flowersInZone.forEach(inst => {

@@ -1,6 +1,53 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
+export function backgroundCube(scene) {
+  // Cube Map 하늘 배경
+  const urls = [
+      './assets/Textures/Sky/px.png',
+      './assets/Textures/Sky/nx.png',
+      './assets/Textures/Sky/py.png',
+      './assets/Textures/Sky/ny.png',
+      './assets/Textures/Sky/pz.png',
+      './assets/Textures/Sky/nz.png'
+  ];
+
+  // 다양한 배경 시도..흔적..
+  // const urls = [
+  //     './assets/Textures/Background/px.png',
+  //     './assets/Textures/Background/nx.png',
+  //     './assets/Textures/Background/py.png',
+  //     './assets/Textures/Background/ny.png',
+  //     './assets/Textures/Background/pz.png',
+  //     './assets/Textures/Background/nz.png'
+  // ];
+
+  var cubeLoader = new THREE.CubeTextureLoader();
+  const backgroundCube = cubeLoader.load(urls);
+  scene.background = backgroundCube;
+  const environmentCube = cubeLoader.load(urls);
+  scene.environment = environmentCube;
+}
+
+export function lighting(scene) {
+  // 햇빛
+  const sunLight = new THREE.DirectionalLight(0xffffff, 5);
+  sunLight.position.set(200, 200, 200);
+  sunLight.castShadow = true;
+  sunLight.shadow.mapSize.set(2048, 2048);
+  sunLight.shadow.camera.near = 1;
+  sunLight.shadow.camera.far = 1000;
+  sunLight.shadow.camera.left = -200;
+  sunLight.shadow.camera.right = 200;
+  sunLight.shadow.camera.top = 200;
+  sunLight.shadow.camera.bottom = -200;
+  scene.add(sunLight);
+
+  // 주변광
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+  scene.add(ambientLight);
+}
+
 // flower URL 목록
 export const flowerModels = {
   daffodil: './assets/models/Daffodil.glb',
@@ -49,7 +96,7 @@ export function loadGround(scene, groundMeshes, callback) {
     if (callback) callback(); // 예: spawnFlower 반복 호출
   });
 
-    loader.load('./assets/models/Field.glb', (gltf) => {
+  loader.load('./assets/models/Field.glb', (gltf) => {
     gltf.scene.traverse(function (child) {
       if (child.isMesh) {
         child.castShadow = true;
@@ -111,6 +158,7 @@ export function spawnFlower(flowerUrl, positionXZ, yRot, groundMeshes, scene, ty
         finalY: finalY,
         activePosition: new THREE.Vector3(positionXZ.x, finalY + 1, positionXZ.z),
         activeRot: yRot * 30,
+        phase: Math.random() * Math.PI * 2,
         type: kind
       });
     }

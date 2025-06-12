@@ -49,8 +49,8 @@ export function updateCameraFollow(playerZone, player, isFirstPerson, firstPerso
 //   }
 
   // 물 줄 때 줌인
-  const basePos = playerZone.position.clone().add(new THREE.Vector3(0, 50, 50));
-  const zoomTargetPos = playerZone.position.clone().add(new THREE.Vector3(0, 30, 30)); // 더 가까운 위치
+  const basePos = playerZone.position.clone().add(new THREE.Vector3(0, 30, 60));
+  const zoomTargetPos = playerZone.position.clone().add(new THREE.Vector3(0, 20, 40)); // 더 가까운 위치
 
   if (isZoomIn && playerZone) {
     const elapsed = performance.now() - zoomStartTime;
@@ -85,7 +85,7 @@ export function updateCameraFollow(playerZone, player, isFirstPerson, firstPerso
 
   // 기본적으로 플레이어를 따라감
   if (autoFollowFlag && playerZone) {
-    const cameraOffset = new THREE.Vector3(0, 50, 50);
+    const cameraOffset = new THREE.Vector3(0, 30, 60);
     const targetCamPos = playerZone.position.clone().add(cameraOffset);
 
     const elapsed = performance.now() - openingFollowStartTime;
