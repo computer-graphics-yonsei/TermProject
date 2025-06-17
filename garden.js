@@ -181,16 +181,17 @@ function updateFlowerOutlines() {
   });
   waterableOutlinePass.selectedObjects = waterableObjects;
 
-  // 2. 모든 꽃들 (회색 아웃라인)
-  const allFlowerObjects = [];
-  allInstances.forEach(inst => {
+  // 2. 아직 성장하지 않은 꽃들만 회색 아웃라인 표시
+  const ungrownFlowers = allInstances.filter(inst => !inst.growthFinished);
+  const ungrownObjects = [];
+  ungrownFlowers.forEach(inst => {
     inst.group.traverse((child) => {
       if (child.isMesh) {
-        allFlowerObjects.push(child);
+        ungrownObjects.push(child);
       }
     });
   });
-  occludedOutlinePass.selectedObjects = allFlowerObjects;
+  occludedOutlinePass.selectedObjects = ungrownObjects;
 }
 
 // ======================text======================
