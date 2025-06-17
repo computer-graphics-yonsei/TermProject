@@ -344,6 +344,49 @@ window.addEventListener('keydown', (e) => {
   if (e.key === 's') keyState.s = true;
   if (e.key === 'd') keyState.d = true;
   if (e.key in keyState) keyState[e.key] = true;
+
+  // 스페이스바로 가까운 꽃에 물주기
+  if (e.code === 'Space') {
+    const allInstances = getAllFlowerInstances();
+    const flowersInZone = allInstances.filter(inst => {
+      const pos = inst.group.position;
+      const d = playerZone.position.distanceTo(
+        new THREE.Vector3(pos.x, playerZone.position.y, pos.z)
+      );
+      return (
+        d <= 10 &&  // playerZoneRadius와 동일
+        !inst.isActivated &&          // 지금 성장 애니메이션 중이 아님
+        !inst.growthFinished          // 과거에 이미 물을 준 적도 없음
+      );
+    });
+
+    if (flowersInZone.length > 0) {
+      // 가장 가까운 꽃 방향을 바라보게
+      if (player) {
+        const flowerPos = flowersInZone[0].group.position;
+        const lookDir = new THREE.Vector3().subVectors(flowerPos, playerZone.position);
+        player.setLookDirection(lookDir);
+      }
+
+      if (player) {
+        triggerZoomIn();
+        player.playWaterOnceThenIdle();
+      }
+
+      const totalCount = allInstances.length;
+      wateredCount += flowersInZone.length;
+      scoreElement.innerText = `Watered: ${wateredCount} / ${totalCount}`;
+
+      flowersInZone.forEach(inst => {
+        inst.isActivated = true;
+        inst.startTime = performance.now();
+        inst.growthFinished = true;
+      });
+
+      // 이동 중이라면 즉시 멈추고 현재 위치에 고정
+      targetPosition = null;
+    }
+  }
 });
 
 window.addEventListener('keyup', (e) => {
@@ -435,7 +478,6 @@ window.addEventListener('click', (event) => {
 // (임시) 엔터 누르면 모든 꽃 다 자라남
 window.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') {
-
     const allInstances = getAllFlowerInstances();
     const now = performance.now();
     allInstances.forEach(inst => {
