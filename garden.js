@@ -277,6 +277,29 @@ function createPlayerZone(radius, segments, color, position){
   return circle;
 }
 
+// 지형 경계 설정
+const TERRAIN_BOUNDS = {
+  minX: -70,  // 가장 왼쪽 꽃밭 위치 기준
+  maxX: 65,   // 가장 오른쪽 꽃밭 위치 기준
+  minZ: -60,  // 가장 앞쪽 꽃밭 위치 기준
+  maxZ: 50    // 가장 뒤쪽 꽃밭 위치 기준
+};
+
+// 위치가 경계 내에 있는지 확인하는 함수
+function isWithinBounds(position) {
+  return position.x >= TERRAIN_BOUNDS.minX &&
+         position.x <= TERRAIN_BOUNDS.maxX &&
+         position.z >= TERRAIN_BOUNDS.minZ &&
+         position.z <= TERRAIN_BOUNDS.maxZ;
+}
+
+// 위치를 경계 내로 제한하는 함수
+function clampToBounds(position) {
+  position.x = Math.max(TERRAIN_BOUNDS.minX, Math.min(TERRAIN_BOUNDS.maxX, position.x));
+  position.z = Math.max(TERRAIN_BOUNDS.minZ, Math.min(TERRAIN_BOUNDS.maxZ, position.z));
+  return position;
+}
+
 // 영역 움직임
 let playerZone;
 const moveSpeed = 0.2; // 클릭 이동 속도(조절 가능)
@@ -293,14 +316,17 @@ player.bindAnimationHotkeys();
 
 // 영역 (및 플레이어) 이동 함수
 function movePlayer(position) {
+  // 목표 위치가 경계 내에 있는지 확인하고 조정
+  const clampedPosition = clampToBounds(position.clone());
+  
   autoFollowPlayer = true;
-  const rayOrigin = new THREE.Vector3(position.x, 100, position.z);
+  const rayOrigin = new THREE.Vector3(clampedPosition.x, 100, clampedPosition.z);
   raycaster.set(rayOrigin, downDirection);
   const intersects = raycaster.intersectObjects(groundMeshes, true);
 
   if (intersects.length > 0) {
     const groundY = intersects[0].point.y;
-    targetPosition = new THREE.Vector3(position.x, groundY + 1, position.z);
+    targetPosition = new THREE.Vector3(clampedPosition.x, groundY + 1, clampedPosition.z);
   }
 }
 
@@ -320,13 +346,17 @@ function animate() {
       targetPosition = null;
       if (player) {
         player.setMoving(false);
-        if (!player.isWatering) player.setAnimation('idle'); // 도착 시 idle (단, 물주기 중이 아니면)
+        if (!player.isWatering) player.setAnimation('idle');
       }
     } else {
       direction.normalize();
-      playerZone.position.addScaledVector(direction, moveSpeed);
-      if (player) player.setLookDirection(direction);
-      if (player) player.setMoving(true); // 이동 중임만 알림
+      const newPosition = playerZone.position.clone().addScaledVector(direction, moveSpeed);
+      // 새로운 위치가 경계 내에 있는지 확인
+      if (isWithinBounds(newPosition)) {
+        playerZone.position.copy(newPosition);
+        if (player) player.setLookDirection(direction);
+        if (player) player.setMoving(true);
+      }
     }
   } else {
     const moveVec = new THREE.Vector3();
@@ -338,10 +368,14 @@ function animate() {
     const isKeyDown = Object.values(keyState).some(v => v);
     if (isKeyDown && moveVec.lengthSq() > 0) {
       moveVec.normalize().multiplyScalar(moveSpeed);
-      playerZone.position.add(moveVec);
-      if (player) {
-        player.setMoving(true);
-        player.setLookDirection(moveVec);
+      const newPosition = playerZone.position.clone().add(moveVec);
+      // 새로운 위치가 경계 내에 있는지 확인
+      if (isWithinBounds(newPosition)) {
+        playerZone.position.copy(newPosition);
+        if (player) {
+          player.setMoving(true);
+          player.setLookDirection(moveVec);
+        }
       }
     } else {
       if (player) player.setMoving(false);
