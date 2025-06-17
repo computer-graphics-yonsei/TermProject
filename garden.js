@@ -26,18 +26,31 @@ const composer = new EffectComposer(renderer);
 const renderPass = new RenderPass(scene, camera);
 composer.addPass(renderPass);
 
-// 아웃라인 효과 설정
-const outlinePass = new OutlinePass(
+// 물 줄 수 있는 꽃들을 위한 아웃라인 효과 설정
+const waterableOutlinePass = new OutlinePass(
   new THREE.Vector2(window.innerWidth, window.innerHeight),
   scene,
   camera
 );
-outlinePass.edgeStrength = 2;  // 외곽선 강도
-outlinePass.edgeGlow = 0.4;    // 외곽선 발광
-outlinePass.edgeThickness = 0.8; // 외곽선 두께
-outlinePass.visibleEdgeColor.set('#ffffff');  // 외곽선 색상
-outlinePass.hiddenEdgeColor.set('#ffffff');   // 가려진 부분의 외곽선 색상
-composer.addPass(outlinePass);
+waterableOutlinePass.edgeStrength = 2;  // 외곽선 강도
+waterableOutlinePass.edgeGlow = 0.4;    // 외곽선 발광
+waterableOutlinePass.edgeThickness = 0.8; // 외곽선 두께
+waterableOutlinePass.visibleEdgeColor.set('#ffffff');  // 외곽선 색상
+waterableOutlinePass.hiddenEdgeColor.set('#ffffff');   // 가려진 부분의 외곽선 색상
+composer.addPass(waterableOutlinePass);
+
+// 가려진 꽃들을 위한 아웃라인 효과 설정
+const occludedOutlinePass = new OutlinePass(
+  new THREE.Vector2(window.innerWidth, window.innerHeight),
+  scene,
+  camera
+);
+occludedOutlinePass.edgeStrength = 2; 
+occludedOutlinePass.edgeGlow = 0.3;    
+occludedOutlinePass.edgeThickness = 0.6; 
+occludedOutlinePass.visibleEdgeColor.set('#666666'); 
+occludedOutlinePass.hiddenEdgeColor.set('#666666');  
+composer.addPass(occludedOutlinePass);
 
 // 최종 출력을 위한 패스
 const outputPass = new OutputPass();
@@ -141,9 +154,11 @@ function animateFlowers(inst) {
   }
 }
 
-// 물 줄 수 있는 꽃들의 아웃라인 표시
+// 꽃들의 아웃라인 업데이트 함수 수정
 function updateFlowerOutlines() {
   const allInstances = getAllFlowerInstances();
+  
+  // 1. 물 줄 수 있는 꽃들 (하얀색 아웃라인)
   const waterableFlowers = allInstances.filter(inst => {
     const pos = inst.group.position;
     const d = playerZone.position.distanceTo(
@@ -156,16 +171,26 @@ function updateFlowerOutlines() {
     );
   });
 
-  // 물 줄 수 있는 꽃들의 메시를 아웃라인 패스에 추가
-  const selectedObjects = [];
+  const waterableObjects = [];
   waterableFlowers.forEach(inst => {
     inst.group.traverse((child) => {
       if (child.isMesh) {
-        selectedObjects.push(child);
+        waterableObjects.push(child);
       }
     });
   });
-  outlinePass.selectedObjects = selectedObjects;
+  waterableOutlinePass.selectedObjects = waterableObjects;
+
+  // 2. 모든 꽃들 (회색 아웃라인)
+  const allFlowerObjects = [];
+  allInstances.forEach(inst => {
+    inst.group.traverse((child) => {
+      if (child.isMesh) {
+        allFlowerObjects.push(child);
+      }
+    });
+  });
+  occludedOutlinePass.selectedObjects = allFlowerObjects;
 }
 
 // ======================text======================
