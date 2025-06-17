@@ -50,13 +50,18 @@ export function updateCameraFollow(playerZone, player, isFirstPerson, firstPerso
 
   // 물 줄 때 줌인
   const basePos = playerZone.position.clone().add(new THREE.Vector3(0, 30, 60));
-  const zoomTargetPos = playerZone.position.clone().add(new THREE.Vector3(0, 20, 40)); // 더 가까운 위치
+  const zoomTargetPos = playerZone.position.clone().add(new THREE.Vector3(0, 25, 48)); // 줌인 거리 조정
 
   if (isZoomIn && playerZone) {
     const elapsed = performance.now() - zoomStartTime;
     const t = Math.min(elapsed / ZOOM_DURATION, 1);
     
-    const lerped = basePos.clone().lerp(zoomTargetPos, t);
+    // 부드러운 easing 함수 적용
+    const easedT = t < 0.5
+      ? 2 * t * t
+      : 1 - Math.pow(-2 * t + 2, 2) / 2;
+    
+    const lerped = basePos.clone().lerp(zoomTargetPos, easedT);
 
     camera.position.copy(lerped);
     camera.lookAt(playerZone.position);
@@ -64,7 +69,7 @@ export function updateCameraFollow(playerZone, player, isFirstPerson, firstPerso
     if (t >= 1) {
       isZoomIn = false;
       isZoomOut = true;
-      zoomStartTime = performance.now(); // 줌아웃 타이머 시작
+      zoomStartTime = performance.now();
     }
     return;
   }
@@ -72,7 +77,13 @@ export function updateCameraFollow(playerZone, player, isFirstPerson, firstPerso
   if (isZoomOut && playerZone) {
     const elapsed = performance.now() - zoomStartTime;
     const t = Math.min(elapsed / ZOOM_DURATION, 1);
-    const lerped = zoomTargetPos.clone().lerp(basePos, t);
+    
+    // 부드러운 easing 함수 적용
+    const easedT = t < 0.5
+      ? 2 * t * t
+      : 1 - Math.pow(-2 * t + 2, 2) / 2;
+    
+    const lerped = zoomTargetPos.clone().lerp(basePos, easedT);
 
     camera.position.copy(lerped);
     camera.lookAt(playerZone.position);
