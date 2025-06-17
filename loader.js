@@ -11,17 +11,7 @@ export function backgroundCube(scene) {
       './assets/Textures/Sky/pz.png',
       './assets/Textures/Sky/nz.png'
   ];
-
-  // 다양한 배경 시도..흔적..
-  // const urls = [
-  //     './assets/Textures/Background/px.png',
-  //     './assets/Textures/Background/nx.png',
-  //     './assets/Textures/Background/py.png',
-  //     './assets/Textures/Background/ny.png',
-  //     './assets/Textures/Background/pz.png',
-  //     './assets/Textures/Background/nz.png'
-  // ];
-
+  
   var cubeLoader = new THREE.CubeTextureLoader();
   const backgroundCube = cubeLoader.load(urls);
   scene.background = backgroundCube;

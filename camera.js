@@ -18,36 +18,7 @@ export function setupCamera(renderer, position = new THREE.Vector3(0, 100, 100))
 }
 
 // 카메라 이동 함수
-export function updateCameraFollow(playerZone, player, isFirstPerson, firstPersonStartTime, autoFollowFlag) {
-//   if (isFirstPerson && player && player.model) {
-//     const headOffset = new THREE.Vector3(0, 20, 0); // 머리 높이
-//     const forward = new THREE.Vector3(0, 0, -1); // 정면 방향
-
-//     // 캐릭터의 머리 위치 계산
-//     const headPos = new THREE.Vector3();
-//     player.model.getWorldPosition(headPos);
-//     headPos.add(headOffset);
-
-//     // 회전 적용: 캐릭터가 바라보는 방향
-//     forward.applyQuaternion(player.model.quaternion).normalize();
-    
-//     // 카메라를 머리 바로 앞에 놓는다 (몸보다 살짝 앞)
-//     const cameraPos = headPos.clone().add(forward.clone().multiplyScalar(-100));
-//     camera.position.copy(cameraPos);
-
-//     // 바라보는 곳: 캐릭터가 바라보는 방향 10유닛 앞
-//     const lookTarget = cameraPos.clone().add(forward.clone().multiplyScalar(0));
-//     camera.lookAt(headPos); // lookTarget으로 하니까 하늘을 바라보게 되길래...
-
-//     orbitControls.enabled = false;
-
-//     if (performance.now() - firstPersonStartTime > 3000) {
-//       window.isFirstPerson = false;
-//       window.autoFollowPlayer = true;
-//       orbitControls.enabled = true;
-//     }
-//   }
-
+export function updateCameraFollow(playerZone, autoFollowFlag) {
   // 물 줄 때 줌인
   const basePos = playerZone.position.clone().add(new THREE.Vector3(0, 30, 60));
   const zoomTargetPos = playerZone.position.clone().add(new THREE.Vector3(0, 25, 48)); // 줌인 거리 조정
@@ -106,27 +77,6 @@ export function updateCameraFollow(playerZone, player, isFirstPerson, firstPerso
     camera.lookAt(playerZone.position);
     orbitControls.target.copy(playerZone.position);
     orbitControls.update();
-
-    // // Opening
-    // const elapsed = performance.now() - openingFollowStartTime;
-    // const t = Math.min(elapsed / OPENING_FOLLOW_DURATION, 1); // 진행 비율 (0~1)
-
-    // const center = playerZone.position.clone();
-    // const radiusStart = 700;
-    // const radiusEnd = 50;
-    // const radius = THREE.MathUtils.lerp(radiusStart, radiusEnd, t);
-
-    // const angle = THREE.MathUtils.degToRad(180 * t); // 반바퀴 회전
-
-    // const x = center.x + radius * Math.sin(angle);
-    // const z = center.z + radius * Math.cos(angle);
-    // const y = THREE.MathUtils.lerp(-400, 50, t); // y축도 점점 내려옴
-
-    // camera.position.set(x, y, z);
-    // camera.lookAt(center);
-
-    // orbitControls.target.copy(center);
-    // orbitControls.update();
   }
 }
 

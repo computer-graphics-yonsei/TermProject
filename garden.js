@@ -200,19 +200,6 @@ function swayFlowers(timeSec) {
   });
 }
 
-// ======================GameClear======================
-let finishShown = false;
-
-function checkGlobalCompletion() {
-  if (finishShown) return;
-
-  const allTypes = Object.keys(flowerInfo);
-  if (labeledTypes.size === allTypes.length) {
-    finishShown = true;
-    showCompletionText();
-  }
-}
-
 // ======================Player======================
 // 플레이어 영역 생성 함수
 function createPlayerZone(radius, segments, color, position){
@@ -299,6 +286,20 @@ function movePlayer(position) {
     targetPosition = new THREE.Vector3(clampedPosition.x, groundY + 1, clampedPosition.z);
   }
 }
+
+// ======================GameClear======================
+let finishShown = false;
+
+function checkGlobalCompletion() {
+  if (finishShown) return;
+
+  const allTypes = Object.keys(flowerInfo);
+  if (labeledTypes.size === allTypes.length) {
+    finishShown = true;
+    showCompletionText();
+  }
+}
+
 
 animate();
 function animate() {
