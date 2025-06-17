@@ -3,6 +3,10 @@ import { initRenderer } from './util/util.js';
 import { backgroundCube, lighting, loadGround, spawnFlower, flowerModels, getAllFlowerInstances } from './loader.js';
 import { setupCamera, updateCameraFollow, getCamera, triggerZoomIn } from './camera.js';
 import { Player } from './player.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { OutlinePass } from 'three/addons/postprocessing/OutlinePass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
 window.isFirstPerson = false;
 window.firstPersonStartTime = 0;
@@ -16,6 +20,33 @@ const renderer = initRenderer();
 // 카메라 세팅
 const { camera, orbitControls } = setupCamera(renderer); // util 기반으로 생성
 scene.add(camera);
+
+// 후처리 효과 설정
+const composer = new EffectComposer(renderer);
+const renderPass = new RenderPass(scene, camera);
+composer.addPass(renderPass);
+
+// 아웃라인 효과 설정
+const outlinePass = new OutlinePass(
+  new THREE.Vector2(window.innerWidth, window.innerHeight),
+  scene,
+  camera
+);
+outlinePass.edgeStrength = 2;  // 외곽선 강도
+outlinePass.edgeGlow = 0.4;    // 외곽선 발광
+outlinePass.edgeThickness = 0.8; // 외곽선 두께
+outlinePass.visibleEdgeColor.set('#ffffff');  // 외곽선 색상
+outlinePass.hiddenEdgeColor.set('#ffffff');   // 가려진 부분의 외곽선 색상
+composer.addPass(outlinePass);
+
+// 최종 출력을 위한 패스
+const outputPass = new OutputPass();
+composer.addPass(outputPass);
+
+// 윈도우 크기 변경 시 이펙트 컴포저 크기도 업데이트
+window.addEventListener('resize', () => {
+  composer.setSize(window.innerWidth, window.innerHeight);
+});
 
 // 방향키 처리
 const keyState = {
@@ -108,6 +139,33 @@ function animateFlowers(inst) {
     inst.isActivated = false;
     inst.growthFinished = true;
   }
+}
+
+// 물 줄 수 있는 꽃들의 아웃라인 표시
+function updateFlowerOutlines() {
+  const allInstances = getAllFlowerInstances();
+  const waterableFlowers = allInstances.filter(inst => {
+    const pos = inst.group.position;
+    const d = playerZone.position.distanceTo(
+      new THREE.Vector3(pos.x, playerZone.position.y, pos.z)
+    );
+    return (
+      d <= 10 &&  // playerZoneRadius와 동일
+      !inst.isActivated &&          // 지금 성장 애니메이션 중이 아님
+      !inst.growthFinished          // 과거에 이미 물을 준 적도 없음
+    );
+  });
+
+  // 물 줄 수 있는 꽃들의 메시를 아웃라인 패스에 추가
+  const selectedObjects = [];
+  waterableFlowers.forEach(inst => {
+    inst.group.traverse((child) => {
+      if (child.isMesh) {
+        selectedObjects.push(child);
+      }
+    });
+  });
+  outlinePass.selectedObjects = selectedObjects;
 }
 
 // ======================text======================
@@ -249,7 +307,7 @@ function movePlayer(position) {
 animate();
 function animate() {
   // 바람 효과
-  const now  = performance.now();
+  const now = performance.now();
   const tSec = now * 0.001;
   swayFlowers(tSec);
 
@@ -271,39 +329,25 @@ function animate() {
       if (player) player.setMoving(true); // 이동 중임만 알림
     }
   } else {
-    // if (player) player.setMoving(false);
-    
-    // 방향키 이동
     const moveVec = new THREE.Vector3();
     if (keyState.w || keyState.ArrowUp) moveVec.z -= 1;
     if (keyState.s || keyState.ArrowDown) moveVec.z += 1;
     if (keyState.a || keyState.ArrowLeft) moveVec.x -= 1;
     if (keyState.d || keyState.ArrowRight) moveVec.x += 1;
 
-  //   if (moveVec.lengthSq() > 0) {
-  //     moveVec.normalize().multiplyScalar(moveSpeed);
-  //     playerZone.position.add(moveVec);
-  //     if (player) {
-  //       player.setMoving(true);
-  //       player.setLookDirection(moveVec);
-  //     }
-  //   } else {
-  //     if (player) player.setMoving(false);
-  //   }
-  // }
-  const isKeyDown = Object.values(keyState).some(v => v);
-  if (isKeyDown && moveVec.lengthSq() > 0) {
-    moveVec.normalize().multiplyScalar(moveSpeed);
-    playerZone.position.add(moveVec);
-    if (player) {
-      player.setMoving(true);
-      player.setLookDirection(moveVec);
+    const isKeyDown = Object.values(keyState).some(v => v);
+    if (isKeyDown && moveVec.lengthSq() > 0) {
+      moveVec.normalize().multiplyScalar(moveSpeed);
+      playerZone.position.add(moveVec);
+      if (player) {
+        player.setMoving(true);
+        player.setLookDirection(moveVec);
+      }
+    } else {
+      if (player) player.setMoving(false);
+      if (!player.isWatering) player.setAnimation('idle');  
     }
-  } else {
-    if (player) player.setMoving(false);
-    if (!player.isWatering) player.setAnimation('idle');  
   }
-}
 
   // 플레이어 위치 동기화
   if (player) player.update(playerZone.position);
@@ -313,7 +357,9 @@ function animate() {
     if (inst.isActivated) animateFlowers(inst);
   });
 
-  // updateCameraFollow(playerZone, player, window.isFirstPerson, window.firstPersonStartTime, autoFollowPlayer);
+  // 물 줄 수 있는 꽃들의 아웃라인 업데이트
+  updateFlowerOutlines();
+
   updateCameraFollow(playerZone, player, window.isFirstPerson, window.firstPersonStartTime, autoFollowPlayer);
 
   // 모두 성장한 꽃은 꽃말 띄우기
@@ -322,8 +368,10 @@ function animate() {
   // 게임 종료 인풋 막기
   checkGlobalCompletion();
   
+  // renderer.render(scene, camera) 대신 composer 사용
+  composer.render();
+  
   requestAnimationFrame(animate);
-  renderer.render(scene, camera);
 }
 
 // ======================Input======================
