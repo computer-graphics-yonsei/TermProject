@@ -500,6 +500,9 @@ let targetPosition = null; // 전역에서 관리
 let player = null;
 let autoFollowPlayer = true; // 카메라 조정 플래그
 
+// 마지막 이동 방향 저장
+let lastMoveDirection = new THREE.Vector3(0, 0, -1);  // 초기 방향: 앞쪽
+
 // playerZone 생성 이후에 Player 인스턴스 생성
 player = new Player(scene, raycaster, groundMeshes, playerZone.position.clone(), downDirection);
 player.bindAnimationHotkeys();
@@ -587,11 +590,17 @@ function animate() {
         if (player) {
           player.setMoving(true);
           player.setLookDirection(moveVec);
+          // 현재 이동 방향 저장
+          lastMoveDirection.copy(moveVec);
         }
       }
     } else {
-      if (player) player.setMoving(false);
-      if (!player.isWatering) player.setAnimation('idle');  
+      if (player) {
+        player.setMoving(false);
+        // 이동이 멈춰도 마지막 방향 유지
+        player.setLookDirection(lastMoveDirection);
+        if (!player.isWatering) player.setAnimation('idle');
+      }
     }
   }
 
@@ -689,6 +698,20 @@ window.addEventListener('keyup', (e) => {
   if (e.key === 's') keyState.s = false;
   if (e.key === 'd') keyState.d = false;
   if (e.key in keyState) keyState[e.key] = false;
+
+  // 키를 떼었을 때 현재 이동 방향 확인
+  const moveVec = new THREE.Vector3();
+  if (keyState.w || keyState.ArrowUp) moveVec.z -= 1;
+  if (keyState.s || keyState.ArrowDown) moveVec.z += 1;
+  if (keyState.a || keyState.ArrowLeft) moveVec.x -= 1;
+  if (keyState.d || keyState.ArrowRight) moveVec.x += 1;
+
+  // 아직 다른 키가 눌려있다면 그 방향으로 lastMoveDirection 업데이트
+  if (moveVec.lengthSq() > 0) {
+    moveVec.normalize();
+    lastMoveDirection.copy(moveVec);
+    if (player) player.setLookDirection(moveVec);
+  }
 });
 // 유저 클릭 처리
 // 꽃 클릭 시 water 애니메이션 1회 재생 (player 메서드로 변경)
