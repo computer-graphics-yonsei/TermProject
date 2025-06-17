@@ -7,6 +7,7 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { OutlinePass } from 'three/addons/postprocessing/OutlinePass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { FloatingCloud } from './cloud.js';
 
 window.isFirstPerson = false;
 window.firstPersonStartTime = 0;
@@ -76,7 +77,10 @@ const keyState = {
 // raycaster 
 const raycaster = new THREE.Raycaster();
 const downDirection = new THREE.Vector3(0, -1, 0);
+
 let groundMeshes = [];
+let collisionMeshes = [];
+let cloudSpheres = [];
 
 // ======================Background======================
 // Cube Map 하늘 배경
@@ -112,9 +116,11 @@ const flowerSpawnConfigs = [
   { type: 'tulip', url: flowerModels.tulip, count: 30, xRange: [-25, -5], zRange: [-20, 15], randomYRot: true },
 ];
 
-loadGround(scene, groundMeshes, () => {
+loadGround(scene, groundMeshes, collisionMeshes, () => {
   const totalCount = flowerSpawnConfigs.reduce((sum, config) => sum + config.count, 0);
-  scoreElement.innerText = `Watered: 0 / ${totalCount}`;
+  if (scoreElement) {
+    scoreElement.innerText = `Watered: ${wateredCount} / ${totalCount}`;
+  }
 
   flowerSpawnConfigs.forEach(({ type, url, count, xRange, zRange, randomYRot }) => {
     for (let i = 0; i < count; i++) {
@@ -124,6 +130,9 @@ loadGround(scene, groundMeshes, () => {
       spawnFlower(url, new THREE.Vector3(x, 0, z), yRot, groundMeshes, scene, type);
     }
   });
+  for (let i = 0; i < 300; i++) {
+    cloudSpheres.push(new FloatingCloud(scene));
+  }
 });
 
 const activeScale = new THREE.Vector3(2, 2, 2); // 성장했을 때 크기
@@ -305,22 +314,28 @@ const activeParticleSystems = [];
 function createTextSprite(message) {
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
-  canvas.width = 512;
-  canvas.height = 128;
+  canvas.width = 1024;
+  canvas.height = 256;
   
   // 텍스트 스타일 설정
-  ctx.font = 'bold 40px sans-serif';
+  ctx.font = '40px "Malgun Gothic", sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   
   // 외곽선
   ctx.strokeStyle = 'black';
   ctx.lineWidth = 6;
-  ctx.strokeText(message, 256, 64);
+  ctx.strokeText(message, 512, 128);
   
   // 내부 텍스트
   ctx.fillStyle = 'white';
-  ctx.fillText(message, 256, 64);
+  ctx.fillText(message, 512, 128);
+
+  ctx.shadowColor = 'rgb(235, 255, 121)';
+  ctx.shadowBlur = 30;
+
+  ctx.fillStyle = 'white';
+  ctx.fillText(message, 512, 128);
 
   const texture = new THREE.CanvasTexture(canvas);
   const material = new THREE.SpriteMaterial({ 
@@ -330,7 +345,7 @@ function createTextSprite(message) {
   });
   
   const sprite = new THREE.Sprite(material);
-  sprite.scale.set(30, 8, 1);
+  sprite.scale.set(60, 16, 1);
   
   // 애니메이션 관련 속성 추가
   sprite.userData.animationStartTime = performance.now();
@@ -346,7 +361,9 @@ function showFlowerLabel(type, position) {
   const message = `${info.name}: ${info.meaning}`;
   const sprite = createTextSprite(message);
   let textY = 5;
+  if (type === 'daffodil') textY += 3;
   if (type === 'sunflower') textY += 10;
+  if (type === 'hyacinth') textY += 5;
   sprite.position.copy(position.clone().add(new THREE.Vector3(0, textY, 0)));
   scene.add(sprite);
 
@@ -419,7 +436,7 @@ function showCompletionText() {
   completionTextDiv.style.transform = 'translate(-50%, 30%) scale(0.8)';
   completionTextDiv.style.color = '#ffffff';
   completionTextDiv.style.fontSize = '64px';
-  completionTextDiv.style.fontFamily = 'Arial, sans-serif';
+  completionTextDiv.style.fontFamily = '"Malgun Gothic", sans-serif';
   completionTextDiv.style.textAlign = 'center';
   completionTextDiv.style.opacity = '0';
   completionTextDiv.style.transition = 'all 2s cubic-bezier(0.4, 0, 0.2, 1)';
@@ -488,6 +505,19 @@ function clampToBounds(position) {
   position.x = Math.max(TERRAIN_BOUNDS.minX, Math.min(TERRAIN_BOUNDS.maxX, position.x));
   position.z = Math.max(TERRAIN_BOUNDS.minZ, Math.min(TERRAIN_BOUNDS.maxZ, position.z));
   return position;
+}
+
+// 사물 충돌 처리
+function isCollidingWithObstacle(position) {
+  const size = new THREE.Vector3(5, 5, 5);
+  const playerBBox = new THREE.Box3().setFromCenterAndSize(position.clone(), size);
+
+  for (const mesh of collisionMeshes) {
+    mesh.updateMatrixWorld(true); 
+    const box = new THREE.Box3().setFromObject(mesh);
+    if (box.intersectsBox(playerBBox)) return true;
+  }
+  return false;
 }
 
 // 영역 움직임
@@ -567,7 +597,7 @@ function animate() {
       direction.normalize();
       const newPosition = playerZone.position.clone().addScaledVector(direction, moveSpeed);
       // 새로운 위치가 경계 내에 있는지 확인
-      if (isWithinBounds(newPosition)) {
+      if (isWithinBounds(newPosition) && !isCollidingWithObstacle(newPosition)) {
         playerZone.position.copy(newPosition);
         if (player) player.setLookDirection(direction);
         if (player) player.setMoving(true);
@@ -585,7 +615,7 @@ function animate() {
       moveVec.normalize().multiplyScalar(moveSpeed);
       const newPosition = playerZone.position.clone().add(moveVec);
       // 새로운 위치가 경계 내에 있는지 확인
-      if (isWithinBounds(newPosition)) {
+      if (isWithinBounds(newPosition) && !isCollidingWithObstacle(newPosition)) {
         playerZone.position.copy(newPosition);
         if (player) {
           player.setMoving(true);
@@ -622,6 +652,9 @@ function animate() {
 
   // 게임 종료 인풋 막기
   checkGlobalCompletion();
+
+  // 구름
+  cloudSpheres.forEach(cloud => cloud.update(tSec));
   
   // renderer.render(scene, camera) 대신 composer 사용
   composer.render();
@@ -647,6 +680,7 @@ window.addEventListener('keydown', (e) => {
   if (e.key === 's') keyState.s = true;
   if (e.key === 'd') keyState.d = true;
   if (e.key in keyState) keyState[e.key] = true;
+  autoFollowPlayer = true;
 
   // 스페이스바로 가까운 꽃에 물주기
   if (e.code === 'Space') {
@@ -678,7 +712,8 @@ window.addEventListener('keydown', (e) => {
 
       const totalCount = allInstances.length;
       wateredCount += flowersInZone.length;
-      scoreElement.innerText = `Watered: ${wateredCount} / ${totalCount}`;
+      const scoreLine = document.getElementById('score');
+      scoreLine.innerText = `Watered: ${wateredCount} / ${totalCount}`;
 
       flowersInZone.forEach(inst => {
         inst.isActivated = true;
@@ -766,7 +801,9 @@ window.addEventListener('click', (event) => {
         const allInstances = getAllFlowerInstances();
         const totalCount = allInstances.length;
         wateredCount += flowersInZone.length;
-        scoreElement.innerText = `Watered: ${wateredCount} / ${totalCount}`;
+        if (scoreElement) {
+          scoreElement.innerText = `Watered: ${wateredCount} / ${totalCount}`;
+        }
 
         flowersInZone.forEach(inst => {
           inst.isActivated = true;

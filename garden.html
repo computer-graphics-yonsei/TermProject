@@ -7,6 +7,35 @@
             margin: 0;
             overflow: hidden;
         }
+
+        #instructionBox {
+            position: fixed;
+            top: 30px;
+            left: 30px;
+            background: rgba(65, 61, 54, 0.6);
+            color: white;
+            font-family: "Malgun Gothic", sans-serif;
+            font-size: 18px;
+            padding: 10px 15px;
+            border-radius: 10px;
+            margin-top: 0;
+            padding-top: 0;
+            line-height: 1.5;
+            pointer-events: none;
+            z-index: 1000;
+            white-space: pre-line;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start; /* 왼쪽 정렬 */
+            justify-content: flex-start; /* 위에서부터 정렬 */
+            gap: 10px; /* 항목 간 간격 */
+        }
+
+        #score {
+            font-weight: bold;
+            font-size: 20px;
+        }
     </style>
     <!-- CDN (Content Delivery Network)을 사용, importmap 설정 -->
     <script type="importmap">
@@ -17,21 +46,17 @@
         }
     }
     </script>
-    <script type="module" src="./garden.js"></script>
   </head>
   <body>
-    <div
-      id="score"
-      style="
-        position: absolute;
-        top: 10px;
-        right: 10px;
-        color: white;
-        font-size: 20px;
-        z-index: 1000;
-      "
-    >
-      Watered: 0
+    <div id="instructionBox">
+      <div>
+        꽃에 물을 주세요!<br>
+        이동: 목표지점 클릭 및 WASD<br>
+        물 주기: 영역 내부 클릭 및 Space<br>
+        카메라 조정: Orbit Control<br>
+      </div>
+      <div id="score">Watered: 0 / 325</div>
     </div>
+    <script type="module" src="./garden.js"></script>
   </body>
 </html>

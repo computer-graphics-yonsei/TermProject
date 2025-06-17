@@ -81,7 +81,7 @@ const inactiveColor = new THREE.Color(0x555555);
 const lerpFactor = 0.8;
 
 // Field Load
-export function loadGround(scene, groundMeshes, callback) {
+export function loadGround(scene, groundMeshes, collisionMeshes, callback) {
   loader.load('./assets/models/Grounds.glb', (gltf) => {
     gltf.scene.traverse((child) => {
       if (child.isMesh && child.name.startsWith('Ground')) {
@@ -90,6 +90,7 @@ export function loadGround(scene, groundMeshes, callback) {
         child.receiveShadow = true;
         child.updateMatrixWorld(true);
       }
+
     });
     gltf.scene.position.set(0, 0, 0);
     scene.add(gltf.scene);
@@ -101,6 +102,25 @@ export function loadGround(scene, groundMeshes, callback) {
       if (child.isMesh) {
         child.castShadow = true;
         child.receiveShadow = true;
+
+        child.updateMatrixWorld(true);
+
+        // 이름 유추: 본인 → 부모 → 조부모
+        const name = (
+          child.name ||
+          child.parent?.name ||
+          child.parent?.parent?.name ||
+          ''
+        ).toLowerCase();
+
+        const isRock = name.includes('rock');
+        const isFence = name.includes('fence');
+
+        if (isRock || isFence) {
+          child.updateMatrixWorld(true);
+          child.userData.boundingBox = new THREE.Box3().setFromObject(child);
+          collisionMeshes.push(child);
+        }
       }
     });
     gltf.scene.position.set(0, 0, 0)
