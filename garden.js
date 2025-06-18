@@ -33,7 +33,6 @@ audioLoader.load('./assets/audio/zen-garden.mp3', function(buffer) {
   bgm.setBuffer(buffer);
   bgm.setLoop(true);       // 반복 재생
   bgm.setVolume(1.0);      // 음량 (0.0 ~ 1.0)
-  bgm.play();              // 재생 시작
 });
 
 // 후처리 효과 설정
@@ -427,9 +426,15 @@ window.addEventListener('resize', () => {
 
 orbitControls.addEventListener('start', () => {
   autoFollowPlayer = false;  // 사용자가 마우스로 조작 시작
+  if (bgm && !bgm.isPlaying) {
+    bgm.play();
+  }
 });
 
 window.addEventListener('keydown', (e) => {
+  if (bgm && !bgm.isPlaying) {
+    bgm.play();
+  }
   if (e.key === 'w') keyState.w = true;
   if (e.key === 'a') keyState.a = true;
   if (e.key === 's') keyState.s = true;
@@ -507,6 +512,9 @@ window.addEventListener('keyup', (e) => {
 // 유저 클릭 처리
 // 꽃 클릭 시 water 애니메이션 1회 재생 (player 메서드로 변경)
 window.addEventListener('click', (event) => {
+  if (bgm && !bgm.isPlaying) {
+    bgm.play();
+  }
   const mouse = new THREE.Vector2(
     (event.clientX / window.innerWidth) * 2 - 1,
     -(event.clientY / window.innerHeight) * 2 + 1
