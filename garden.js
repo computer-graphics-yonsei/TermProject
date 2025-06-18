@@ -23,6 +23,19 @@ const renderer = initRenderer();
 const { camera, orbitControls } = setupCamera(renderer); // util 기반으로 생성
 scene.add(camera);
 
+// === 배경음악 ===
+const listener = new THREE.AudioListener();
+camera.add(listener); // 카메라에 리스너 부착
+
+const bgm = new THREE.Audio(listener);
+const audioLoader = new THREE.AudioLoader();
+audioLoader.load('./assets/audio/zen-garden.mp3', function(buffer) {
+  bgm.setBuffer(buffer);
+  bgm.setLoop(true);       // 반복 재생
+  bgm.setVolume(1.0);      // 음량 (0.0 ~ 1.0)
+  bgm.play();              // 재생 시작
+});
+
 // 후처리 효과 설정
 const composer = new EffectComposer(renderer);
 const renderPass = new RenderPass(scene, camera);
